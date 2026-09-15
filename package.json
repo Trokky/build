@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "astro": "^7.3.2",
-    "create-trokky": "github:Trokky/generator#d215f09353d001396552b73939cf15423cfeda0a",
+    "create-trokky": "github:Trokky/generator#2938d195428c175ef1329d8fdba7857fa8580355",
     "fflate": "^0.8.2"
   },
   "devDependencies": {
