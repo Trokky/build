@@ -24,6 +24,10 @@ const axes = manifest.axes
         }
       }
       * { box-sizing: border-box }
+      /* An author `display` rule outranks the hidden attribute's UA style, so a hidden element
+         with `display: block` stays on screen. This is why the deploy button and the note
+         explaining its absence were visible at the same time. */
+      [hidden] { display: none !important }
       body {
         margin: 0; background: var(--bg); color: var(--ink);
         font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
