@@ -15,6 +15,7 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "astro": "^7.3.2",
     "create-trokky": "github:Trokky/generator#2938d195428c175ef1329d8fdba7857fa8580355",
     "fflate": "^0.8.2"

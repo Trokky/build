@@ -3,6 +3,9 @@ import manifest from 'create-trokky/manifest.json'
 import Configurator from '../components/Configurator.astro'
 
 const axes = manifest.axes
+const site = Astro.site?.href ?? 'https://trokky.build/'
+const description =
+  'Pick where it runs, where content lives and how much of the stack you want. Download a Trokky project that is ready to run — API, Studio and a site, on Cloudflare Workers or Node.'
 ---
 <!doctype html>
 <html lang="en">
@@ -10,8 +13,41 @@ const axes = manifest.axes
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>trokky.build — compose a Trokky project</title>
-    <meta name="description" content="Pick where it runs, where content lives, and how much of the stack you want. Download a project that is ready to run." />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🧱</text></svg>" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={site} />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2b6cb0" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111317" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="trokky.build" />
+    <meta property="og:title" content="Compose a Trokky project" />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={site} />
+    <meta property="og:image" content={`${site}og.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="trokky.build — compose a Trokky project" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Compose a Trokky project" />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${site}og.png`} />
+
+    <script type="application/ld+json" is:inline set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: 'trokky.build',
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Any',
+      url: 'https://trokky.build/',
+      description: 'Compose a Trokky project: pick where it runs, where content lives and how much of the stack you want, then download it ready to run.',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      isPartOf: { '@type': 'WebSite', name: 'Trokky', url: 'https://trokky.dev/' },
+    })} />
+
     <style is:global>
       :root {
         --ink: #17181c; --muted: #6b6f76; --line: #e3e5e8; --bg: #fbfbfc; --card: #fff;
@@ -33,19 +69,33 @@ const axes = manifest.axes
         font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
       }
       a { color: var(--accent) }
-      .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px }
-      header { padding: 56px 0 8px }
-      header h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: -0.02em }
-      header p { margin: 0; color: var(--muted); max-width: 60ch }
-      main { padding: 24px 0 64px }
-      footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; padding: 24px 0 48px }
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px }
+
+      header { padding: 40px 0 0 }
+      .brand {
+        display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink);
+        font-weight: 600; letter-spacing: -0.01em; margin-bottom: 36px;
+      }
+      .brand b { font-weight: 600; color: var(--muted) }
+      .brand img { display: block; border-radius: 6px }
+      header h1 { margin: 0 0 10px; font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.3rem); letter-spacing: -0.025em }
+      .lede { margin: 0; color: var(--muted); max-width: 62ch; font-size: 1.05rem }
+
+      main { padding: 40px 0 72px }
+      footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; padding: 22px 0 48px }
+      footer a { text-decoration: none }
+      footer a:hover { text-decoration: underline }
       code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
     </style>
   </head>
   <body>
     <header class="wrap">
+      <a class="brand" href="https://trokky.dev" aria-label="Trokky">
+        <img src="/favicon.svg" width="26" height="26" alt="" />
+        <span>trokky<b>.build</b></span>
+      </a>
       <h1>Compose a Trokky project</h1>
-      <p>
+      <p class="lede">
         Pick where it runs, where content lives, and how much of the stack you want. You get a
         project that is ready to run — not a checklist.
       </p>
@@ -56,10 +106,10 @@ const axes = manifest.axes
     </main>
 
     <footer class="wrap">
-      Everything here is composed by
-      <a href="https://github.com/Trokky/generator">create-trokky</a>, in your browser — nothing is
-      uploaded. <a href="https://trokky.dev">Docs</a> ·
-      <a href="https://github.com/Trokky/trokky">Source</a>
+      Composed by <a href="https://github.com/Trokky/generator">create-trokky</a> in your browser —
+      nothing is uploaded. <a href="https://trokky.dev">Docs</a> ·
+      <a href="https://github.com/Trokky/trokky">Trokky</a> ·
+      <a href="https://github.com/Trokky/build">This page</a>
     </footer>
   </body>
 </html>

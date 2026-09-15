@@ -5,62 +5,80 @@ interface Props { axes: Axis[] }
 const { axes } = Astro.props
 ---
 
-<form id="configurator" novalidate>
-  <label class="name">
-    <span>Project name</span>
-    <input id="project-name" name="name" value="my-trokky-site" spellcheck="false" autocomplete="off" />
-  </label>
+<div class="layout">
+  <form id="configurator" novalidate>
+    <div class="field">
+      <label for="project-name">Project name</label>
+      <input id="project-name" name="name" value="my-trokky-site" spellcheck="false" autocomplete="off" autocapitalize="off" />
+      <p class="field-hint">Used for the folder, the package and — on Cloudflare — the Worker.</p>
+    </div>
 
-  {axes.map(axis => (
-    <fieldset data-axis={axis.id}>
-      <legend>{axis.title}</legend>
-      <div class="options">
-        {axis.options.map(option => (
-          <label class="option" data-option={option.id}>
-            <input type="radio" name={axis.id} value={option.id} />
-            <span class="title">{option.title}</span>
-            {option.hint && <span class="hint">{option.hint}</span>}
-            <span class="because" hidden></span>
-          </label>
-        ))}
+    {axes.map((axis, index) => (
+      <fieldset data-axis={axis.id}>
+        <legend><span class="step">{index + 1}</span>{axis.title}</legend>
+        <div class="options">
+          {axis.options.map(option => (
+            <label class="option" data-option={option.id}>
+              <input type="radio" name={axis.id} value={option.id} />
+              <span class="title">{option.title}</span>
+              {option.hint && <span class="hint">{option.hint}</span>}
+              <span class="because" hidden></span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    ))}
+  </form>
+
+  <aside id="result" aria-live="polite">
+    <div class="panel">
+      <h2>What you will get</h2>
+      <ul id="summary-list"></ul>
+
+      <div class="actions">
+        <a id="deploy" class="deploy" hidden href="#" rel="noopener">
+          <span>Deploy to Cloudflare</span>
+          <small>One click. Cloudflare provisions D1, R2 and Images on your account.</small>
+        </a>
+        <button id="download" type="button">Download project</button>
+        <p id="deploy-note" class="note" hidden>
+          One-click deployment needs a public repository, and this composition is not one — it is
+          assembled here, for you. Download it and deploy in three commands.
+        </p>
       </div>
-    </fieldset>
-  ))}
-</form>
 
-<section id="result" aria-live="polite">
-  <div class="summary">
-    <h2>What you will get</h2>
-    <ul id="summary-list"></ul>
-  </div>
-  <div class="actions">
-    <a id="deploy" class="deploy" hidden href="#" rel="noopener">
-      <span>Deploy to Cloudflare</span>
-      <small>One click. Cloudflare provisions D1, R2 and Images on your account.</small>
-    </a>
-    <button id="download" type="button">Download project</button>
-    <p id="deploy-note" class="note" hidden>
-      One-click deployment needs a public repository, and this composition is not one — it is
-      assembled here, for you. Download it and deploy in three commands:
-      <code>npm install</code>, <code>npx wrangler login</code>, <code>npx wrangler deploy</code>.
-    </p>
-    <p class="cli">Or in a terminal:<br /><code id="cli-command"></code></p>
-  </div>
-</section>
+      <div class="cli">
+        <div class="cli-head">
+          <span>Or in a terminal</span>
+          <button id="copy" type="button" aria-label="Copy command">Copy</button>
+        </div>
+        <code id="cli-command"></code>
+      </div>
+    </div>
+  </aside>
+</div>
 
 <style>
-  form { margin: 0 }
-  .name { display: block; margin-bottom: 32px }
-  .name span { display: block; font-weight: 600; margin-bottom: 8px }
-  .name input {
-    width: 100%; max-width: 360px; padding: 10px 12px; font-size: 1rem;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
-  }
-  .name input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; align-items: start }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 32px } }
 
-  fieldset { border: 0; padding: 0; margin: 0 0 32px }
-  legend { font-weight: 600; padding: 0; margin-bottom: 10px }
-  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px }
+  form { margin: 0 }
+  .field { margin-bottom: 40px }
+  .field label { display: block; font-weight: 600; margin-bottom: 8px }
+  .field input {
+    width: 100%; max-width: 380px; padding: 11px 13px; font-size: 1rem;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink);
+  }
+  .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+  .field-hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0 }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 40px }
+  legend { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 0; margin-bottom: 12px }
+  .step {
+    display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-size: .78rem; font-weight: 700;
+  }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px }
 
   .option {
     position: relative; display: block; padding: 14px 16px; cursor: pointer;
@@ -70,7 +88,7 @@ const { axes } = Astro.props
   .option:hover:not([data-unavailable]) { border-color: var(--accent) }
   .option input { position: absolute; opacity: 0; pointer-events: none }
   .option .title { display: block; font-weight: 600 }
-  .option .hint { display: block; color: var(--muted); font-size: .875rem; margin-top: 3px }
+  .option .hint { display: block; color: var(--muted); font-size: .86rem; margin-top: 3px }
   .option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft) }
   .option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
 
@@ -82,33 +100,41 @@ const { axes } = Astro.props
     color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px;
   }
 
-  #result {
-    border-top: 1px solid var(--line); margin-top: 8px; padding-top: 28px;
-    display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: start;
-  }
-  @media (max-width: 720px) { #result { grid-template-columns: 1fr } }
-  #result h2 { font-size: 1rem; margin: 0 0 10px }
-  #summary-list { margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: .94rem }
-  #summary-list li { padding: 3px 0 }
-  #summary-list b { color: var(--ink); font-weight: 600 }
+  /* The actions follow you down the page: the choices are long and the button is the point. */
+  aside { position: sticky; top: 24px }
+  @media (max-width: 900px) { aside { position: static } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px }
+  .panel h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px }
+  #summary-list { margin: 0 0 18px; padding: 0; list-style: none; font-size: .92rem }
+  #summary-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line) }
+  #summary-list li:last-child { border-bottom: 0 }
+  #summary-list span { color: var(--muted); white-space: nowrap }
+  #summary-list b { font-weight: 600; text-align: right }
 
   .deploy {
     display: block; text-decoration: none; text-align: center; margin-bottom: 10px;
-    padding: 12px 22px; border-radius: 10px; background: #f6821f; color: #fff; font-weight: 600;
+    padding: 12px 18px; border-radius: 10px; background: #f6821f; color: #fff; font-weight: 600;
   }
-  .deploy small { display: block; font-weight: 400; font-size: .78rem; opacity: .92; margin-top: 3px }
-  .note {
-    color: var(--muted); font-size: .84rem; line-height: 1.5; margin: 12px 0 0; max-width: 42ch;
-  }
-  .note code { color: var(--ink); font-size: .8rem; white-space: nowrap }
-
+  .deploy small { display: block; font-weight: 400; font-size: .76rem; opacity: .92; margin-top: 3px }
   #download {
-    font: inherit; font-weight: 600; padding: 12px 22px; border: 0; border-radius: 10px;
+    font: inherit; font-weight: 600; padding: 12px 18px; border: 0; border-radius: 10px;
     background: var(--accent); color: #fff; cursor: pointer; width: 100%;
   }
   #download:disabled { opacity: .55; cursor: progress }
-  .cli { color: var(--muted); font-size: .85rem; margin: 14px 0 0; max-width: 42ch }
-  .cli code { color: var(--ink); word-break: break-all; font-size: .82rem }
+  .note { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: 12px 0 0 }
+
+  .cli { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px }
+  .cli-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px }
+  .cli-head span { color: var(--muted); font-size: .8rem }
+  #copy {
+    font: inherit; font-size: .76rem; padding: 3px 9px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--off); color: var(--muted);
+  }
+  #copy:hover { color: var(--ink); border-color: var(--accent) }
+  #cli-command {
+    display: block; font-size: .76rem; line-height: 1.55; color: var(--ink);
+    word-break: break-all; background: var(--off); border-radius: 8px; padding: 10px;
+  }
 </style>
 
 <script>
@@ -186,7 +212,7 @@ const { axes } = Astro.props
       ['You get', config.parts === 'api' ? 'the API' : config.parts === 'studio' ? 'the API and the Studio' : 'the API, the Studio and a site'],
       ['Starting content', config.content === 'magazine' ? 'a sample magazine' : 'nothing — your schemas'],
     ]
-    summary.innerHTML = lines.map(([label, value]) => `<li>${label} <b>${value}</b></li>`).join('')
+    summary.innerHTML = lines.map(([label, value]) => `<li><span>${label}</span><b>${value}</b></li>`).join('')
 
     const name = nameInput.value.trim() || 'my-trokky-site'
     const flags = axisIds.map(id => `--${id}=${config[id]}`).join(' ')
@@ -200,6 +226,24 @@ const { axes } = Astro.props
     deployNote.hidden = Boolean(template)
     if (template) deploy.href = template.deployButton
   }
+
+  const copy = document.getElementById('copy') as HTMLButtonElement
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(command.textContent ?? '')
+      copy.textContent = 'Copied'
+      setTimeout(() => { copy.textContent = 'Copy' }, 1600)
+    } catch {
+      // Clipboard access can be refused; selecting the text is the honest fallback.
+      const range = document.createRange()
+      range.selectNodeContents(command)
+      const selection = getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+      copy.textContent = 'Select and copy'
+      setTimeout(() => { copy.textContent = 'Copy' }, 2400)
+    }
+  })
 
   form.addEventListener('change', refresh)
   nameInput.addEventListener('input', describe)
