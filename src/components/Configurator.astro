@@ -1,0 +1,231 @@
+---
+interface Option { id: string; title: string; hint?: string }
+interface Axis { id: string; title: string; options: Option[] }
+interface Props { axes: Axis[] }
+const { axes } = Astro.props
+---
+
+<form id="configurator" novalidate>
+  <label class="name">
+    <span>Project name</span>
+    <input id="project-name" name="name" value="my-trokky-site" spellcheck="false" autocomplete="off" />
+  </label>
+
+  {axes.map(axis => (
+    <fieldset data-axis={axis.id}>
+      <legend>{axis.title}</legend>
+      <div class="options">
+        {axis.options.map(option => (
+          <label class="option" data-option={option.id}>
+            <input type="radio" name={axis.id} value={option.id} />
+            <span class="title">{option.title}</span>
+            {option.hint && <span class="hint">{option.hint}</span>}
+            <span class="because" hidden></span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  ))}
+</form>
+
+<section id="result" aria-live="polite">
+  <div class="summary">
+    <h2>What you will get</h2>
+    <ul id="summary-list"></ul>
+  </div>
+  <div class="actions">
+    <button id="download" type="button">Download project</button>
+    <p class="cli">Or in a terminal:<br /><code id="cli-command"></code></p>
+  </div>
+</section>
+
+<style>
+  form { margin: 0 }
+  .name { display: block; margin-bottom: 32px }
+  .name span { display: block; font-weight: 600; margin-bottom: 8px }
+  .name input {
+    width: 100%; max-width: 360px; padding: 10px 12px; font-size: 1rem;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
+  }
+  .name input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 32px }
+  legend { font-weight: 600; padding: 0; margin-bottom: 10px }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px }
+
+  .option {
+    position: relative; display: block; padding: 14px 16px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    transition: border-color .12s, background .12s;
+  }
+  .option:hover:not([data-unavailable]) { border-color: var(--accent) }
+  .option input { position: absolute; opacity: 0; pointer-events: none }
+  .option .title { display: block; font-weight: 600 }
+  .option .hint { display: block; color: var(--muted); font-size: .875rem; margin-top: 3px }
+  .option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft) }
+  .option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
+
+  /* Unavailable is not hidden: seeing why a thing cannot be chosen is most of the value here. */
+  .option[data-unavailable] { background: var(--off); cursor: not-allowed; border-style: dashed }
+  .option[data-unavailable] .title, .option[data-unavailable] .hint { opacity: .5 }
+  .option .because {
+    display: block; margin-top: 8px; font-size: .84rem; line-height: 1.45;
+    color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px;
+  }
+
+  #result {
+    border-top: 1px solid var(--line); margin-top: 8px; padding-top: 28px;
+    display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: start;
+  }
+  @media (max-width: 720px) { #result { grid-template-columns: 1fr } }
+  #result h2 { font-size: 1rem; margin: 0 0 10px }
+  #summary-list { margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: .94rem }
+  #summary-list li { padding: 3px 0 }
+  #summary-list b { color: var(--ink); font-weight: 600 }
+
+  #download {
+    font: inherit; font-weight: 600; padding: 12px 22px; border: 0; border-radius: 10px;
+    background: var(--accent); color: #fff; cursor: pointer; width: 100%;
+  }
+  #download:disabled { opacity: .55; cursor: progress }
+  .cli { color: var(--muted); font-size: .85rem; margin: 14px 0 0; max-width: 42ch }
+  .cli code { color: var(--ink); word-break: break-all; font-size: .82rem }
+</style>
+
+<script>
+  import { validate, optionsFor, withDefaults, generate, inlineFileSource, manifest } from 'create-trokky'
+
+  const form = document.getElementById('configurator') as HTMLFormElement
+  const nameInput = document.getElementById('project-name') as HTMLInputElement
+  const summary = document.getElementById('summary-list') as HTMLUListElement
+  const command = document.getElementById('cli-command') as HTMLElement
+  const download = document.getElementById('download') as HTMLButtonElement
+
+  const axisIds = manifest.axes.map(axis => axis.id)
+
+  /** What is chosen right now, as the generator's config shape. */
+  function chosen(): Record<string, string> {
+    const data = new FormData(form)
+    return Object.fromEntries(axisIds.flatMap(id => {
+      const value = data.get(id)
+      return typeof value === 'string' ? [[id, value]] : []
+    }))
+  }
+
+  /**
+   * Redraw availability from the manifest. The page holds no rules of its own: it asks
+   * `optionsFor` what is still reachable, and shows the constraint's own words for what is not.
+   */
+  function refresh(): void {
+    const config = chosen()
+
+    for (const axis of manifest.axes) {
+      const available = new Set(optionsFor(axis.id, config))
+
+      for (const option of axis.options) {
+        const label = form.querySelector<HTMLLabelElement>(`[data-axis="${axis.id}"] [data-option="${option.id}"]`)
+        if (!label) continue
+        const input = label.querySelector('input') as HTMLInputElement
+        const because = label.querySelector('.because') as HTMLElement
+
+        // Reachable given everything else chosen so far.
+        if (available.has(option.id)) {
+          label.removeAttribute('data-unavailable')
+          input.disabled = false
+          because.hidden = true
+          continue
+        }
+
+        label.setAttribute('data-unavailable', '')
+        input.disabled = true
+        // Why not — in the constraint's own words, not a generic "unavailable".
+        const problem = validate({ ...config, [axis.id]: option.id }).problems.find(p => p.axis === axis.id)
+        because.textContent = problem?.because ?? ''
+        because.hidden = !problem
+        // A choice that has just become impossible cannot stay selected.
+        if (input.checked) {
+          input.checked = false
+          const fallback = form.querySelector<HTMLInputElement>(`[data-axis="${axis.id}"] input:not(:disabled)`)
+          if (fallback) fallback.checked = true
+        }
+      }
+    }
+
+    describe()
+  }
+
+  function describe(): void {
+    const config = chosen()
+    const lines: [string, string][] = [
+      ['Runs on', config.target === 'workers' ? 'Cloudflare Workers' : 'Node / Express'],
+      ['Content in', config.data ?? ''],
+      ['Uploads in', config.media ?? ''],
+      ['Thumbnails', config.images === 'none' ? 'not generated — originals only' : config.images ?? ''],
+      ['You get', config.parts === 'api' ? 'the API' : config.parts === 'studio' ? 'the API and the Studio' : 'the API, the Studio and a site'],
+      ['Starting content', config.content === 'magazine' ? 'a sample magazine' : 'nothing — your schemas'],
+    ]
+    summary.innerHTML = lines.map(([label, value]) => `<li>${label} <b>${value}</b></li>`).join('')
+
+    const name = nameInput.value.trim() || 'my-trokky-site'
+    const flags = axisIds.map(id => `--${id}=${config[id]}`).join(' ')
+    command.textContent = `npm create trokky@latest ${name} -- --yes ${flags}`
+  }
+
+  form.addEventListener('change', refresh)
+  nameInput.addEventListener('input', describe)
+
+  download.addEventListener('click', async () => {
+    const name = nameInput.value.trim() || 'my-trokky-site'
+    const config = withDefaults({ name, ...chosen() } as never)
+
+    const result = validate(config)
+    if (!result.valid) {
+      download.textContent = 'That combination cannot be built'
+      return
+    }
+
+    download.disabled = true
+    download.textContent = 'Building…'
+    try {
+      // Loaded on demand, and the photographs only when a composition actually wants them:
+      // the magazine's images and PDFs are most of the payload and most people never pick it.
+      const [{ text }, { zipSync }, binaryModule] = await Promise.all([
+        import('create-trokky/generated/files-text'),
+        import('fflate'),
+        config.content === 'magazine' ? import('create-trokky/generated/files-binary') : Promise.resolve({ binary: {} }),
+      ])
+
+      const tree = generate(config, inlineFileSource({ text, binary: binaryModule.binary }))
+
+      const encoder = new TextEncoder()
+      const entries: Record<string, Uint8Array> = {}
+      for (const [path, contents] of tree) {
+        entries[`${name}/${path}`] = typeof contents === 'string' ? encoder.encode(contents) : contents
+      }
+
+      // Images and PDFs are already compressed; asking again costs time and saves nothing.
+      const zipped = zipSync(entries, { level: 6 })
+      const url = URL.createObjectURL(new Blob([zipped], { type: 'application/zip' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${name}.zip`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      download.textContent = 'Downloaded — build again?'
+    } catch (error) {
+      console.error(error)
+      download.textContent = 'Something went wrong'
+    } finally {
+      download.disabled = false
+    }
+  })
+
+  // Start from the manifest's own defaults rather than an arbitrary first option.
+  const defaults = { target: 'workers', ...manifest.defaults.workers } as Record<string, string>
+  for (const [axis, value] of Object.entries(defaults)) {
+    const input = form.querySelector<HTMLInputElement>(`[data-axis="${axis}"] [data-option="${value}"] input`)
+    if (input) input.checked = true
+  }
+  refresh()
+</script>

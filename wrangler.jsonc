@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "trokky-build",
+  "compatibility_date": "2026-09-01",
+  // Assets only: there is no Worker script, because there is no server-side work to do.
+  "assets": { "directory": "./dist" },
+  "routes": [
+    { "pattern": "trokky.build", "custom_domain": true },
+    { "pattern": "www.trokky.build", "custom_domain": true }
+  ]
+}

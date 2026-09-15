@@ -1,0 +1,61 @@
+---
+import manifest from 'create-trokky/manifest.json'
+import Configurator from '../components/Configurator.astro'
+
+const axes = manifest.axes
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>trokky.build — compose a Trokky project</title>
+    <meta name="description" content="Pick where it runs, where content lives, and how much of the stack you want. Download a project that is ready to run." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🧱</text></svg>" />
+    <style is:global>
+      :root {
+        --ink: #17181c; --muted: #6b6f76; --line: #e3e5e8; --bg: #fbfbfc; --card: #fff;
+        --accent: #2b6cb0; --accent-soft: #eaf1fa; --off: #f4f5f7;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e8e9ec; --muted: #9195a0; --line: #2a2d34; --bg: #111317; --card: #171a1f;
+          --accent: #7ab0f5; --accent-soft: #17283d; --off: #1d2026;
+        }
+      }
+      * { box-sizing: border-box }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      a { color: var(--accent) }
+      .wrap { max-width: 900px; margin: 0 auto; padding: 0 20px }
+      header { padding: 56px 0 8px }
+      header h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: -0.02em }
+      header p { margin: 0; color: var(--muted); max-width: 60ch }
+      main { padding: 24px 0 64px }
+      footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; padding: 24px 0 48px }
+      code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+    </style>
+  </head>
+  <body>
+    <header class="wrap">
+      <h1>Compose a Trokky project</h1>
+      <p>
+        Pick where it runs, where content lives, and how much of the stack you want. You get a
+        project that is ready to run — not a checklist.
+      </p>
+    </header>
+
+    <main class="wrap">
+      <Configurator axes={axes} />
+    </main>
+
+    <footer class="wrap">
+      Everything here is composed by
+      <a href="https://github.com/Trokky/generator">create-trokky</a>, in your browser — nothing is
+      uploaded. <a href="https://trokky.dev">Docs</a> ·
+      <a href="https://github.com/Trokky/trokky">Source</a>
+    </footer>
+  </body>
+</html>
