@@ -112,7 +112,7 @@ const { axes } = Astro.props
 </style>
 
 <script>
-  import { validate, optionsFor, templateFor, withDefaults, generate, inlineFileSource, manifest } from 'create-trokky'
+  import { validate, optionsFor, reconcile, templateFor, withDefaults, generate, inlineFileSource, manifest } from 'create-trokky'
 
   const form = document.getElementById('configurator') as HTMLFormElement
   const nameInput = document.getElementById('project-name') as HTMLInputElement
@@ -138,7 +138,14 @@ const { axes } = Astro.props
    * `optionsFor` what is still reachable, and shows the constraint's own words for what is not.
    */
   function refresh(): void {
-    const config = chosen()
+    // Changing one axis can invalidate several others — switching to Node leaves the Cloudflare
+    // adapters selected. Settle the whole composition first, so what is drawn below is drawn
+    // against a config that makes sense.
+    const config = reconcile(chosen()) as Record<string, string>
+    for (const [axis, value] of Object.entries(config)) {
+      const input = form.querySelector<HTMLInputElement>(`[data-axis="${axis}"] [data-option="${value}"] input`)
+      if (input && !input.checked) input.checked = true
+    }
 
     for (const axis of manifest.axes) {
       const available = new Set(optionsFor(axis.id, config))
@@ -163,12 +170,6 @@ const { axes } = Astro.props
         const problem = validate({ ...config, [axis.id]: option.id }).problems.find(p => p.axis === axis.id)
         because.textContent = problem?.because ?? ''
         because.hidden = !problem
-        // A choice that has just become impossible cannot stay selected.
-        if (input.checked) {
-          input.checked = false
-          const fallback = form.querySelector<HTMLInputElement>(`[data-axis="${axis.id}"] input:not(:disabled)`)
-          if (fallback) fallback.checked = true
-        }
       }
     }
 
@@ -176,7 +177,7 @@ const { axes } = Astro.props
   }
 
   function describe(): void {
-    const config = chosen()
+    const config = reconcile(chosen()) as Record<string, string>
     const lines: [string, string][] = [
       ['Runs on', config.target === 'workers' ? 'Cloudflare Workers' : 'Node / Express'],
       ['Content in', config.data ?? ''],
