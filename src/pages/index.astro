@@ -2,6 +2,7 @@
 import manifest from 'create-trokky/manifest.json'
 import Configurator from '../components/Configurator.astro'
 
+const groups = manifest.groups
 const axes = manifest.axes
 const site = Astro.site?.href ?? 'https://trokky.build/'
 const description =
@@ -43,6 +44,7 @@ const description =
       applicationCategory: 'DeveloperApplication',
       operatingSystem: 'Any',
       url: 'https://trokky.build/',
+      image: 'https://trokky.build/og.png',
       description: 'Compose a Trokky project: pick where it runs, where content lives and how much of the stack you want, then download it ready to run.',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       isPartOf: { '@type': 'WebSite', name: 'Trokky', url: 'https://trokky.dev/' },
@@ -51,12 +53,15 @@ const description =
     <style is:global>
       :root {
         --ink: #17181c; --muted: #6b6f76; --line: #e3e5e8; --bg: #fbfbfc; --card: #fff;
-        --accent: #183d92; --accent-2: #1c8bca; --accent-soft: #e9eff9; --off: #f4f5f7;
+        --navy: #183d92; --sky: #1c8bca;
+        --accent: #183d92; --accent-soft: #e9eff9; --off: #f4f5f7;
+        --shadow: 0 1px 2px rgb(24 61 146 / .05), 0 8px 24px -12px rgb(24 61 146 / .18);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --ink: #e8e9ec; --muted: #9195a0; --line: #2a2d34; --bg: #111317; --card: #171a1f;
-          --accent: #5aa8de; --accent-2: #1c8bca; --accent-soft: #15273e; --off: #1d2026;
+          --ink: #e8e9ec; --muted: #9195a0; --line: #2a2d34; --bg: #0f1216; --card: #161a1f;
+          --accent: #5aa8de; --accent-soft: #15273e; --off: #1c2026;
+          --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
         }
       }
       * { box-sizing: border-box }
@@ -67,49 +72,152 @@ const description =
       body {
         margin: 0; background: var(--bg); color: var(--ink);
         font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
       a { color: var(--accent) }
-      .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px }
-
-      header { padding: 40px 0 0 }
-      .brand {
-        display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: var(--ink);
-        font-weight: 600; letter-spacing: -0.01em; margin-bottom: 36px;
-      }
-      .brand b { font-weight: 600; color: var(--muted) }
-      .brand img { display: block }
-      header h1 { margin: 0 0 10px; font-size: clamp(1.7rem, 1.2rem + 1.6vw, 2.3rem); letter-spacing: -0.025em }
-      .lede { margin: 0; color: var(--muted); max-width: 62ch; font-size: 1.05rem }
-
-      main { padding: 40px 0 72px }
-      footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; padding: 22px 0 48px }
-      footer a { text-decoration: none }
-      footer a:hover { text-decoration: underline }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px }
+      @media (max-width: 640px) { .wrap { padding: 0 18px } }
       code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+
+      /* --- top bar ------------------------------------------------------------------ */
+      .topbar { border-bottom: 1px solid var(--line); background: var(--card) }
+      .topbar .wrap { display: flex; align-items: center; gap: 20px; height: 62px }
+      .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink) }
+      .brand img { display: block; width: 26px; height: 29px }
+      .brand span { font-weight: 700; letter-spacing: -.02em; font-size: 1.06rem }
+      .brand b { font-weight: 500; color: var(--muted) }
+      .topbar nav { margin-left: auto; display: flex; gap: 22px; font-size: .92rem }
+      .topbar nav a { color: var(--muted); text-decoration: none }
+      .topbar nav a:hover { color: var(--ink) }
+      @media (max-width: 560px) { .topbar nav a.optional { display: none } }
+
+      /* --- hero --------------------------------------------------------------------- */
+      .hero {
+        position: relative; overflow: hidden; color: #fff;
+        background: linear-gradient(118deg, #10275e 0%, var(--navy) 46%, var(--sky) 132%);
+      }
+      /* The mark, oversized and half off the edge: the page had no identity beyond a 26px icon. */
+      .hero .mark {
+        position: absolute; right: -60px; top: 50%; translate: 0 -50%;
+        width: 420px; opacity: .13; pointer-events: none;
+        filter: brightness(0) invert(1);
+      }
+      @media (max-width: 860px) { .hero .mark { width: 280px; right: -110px; opacity: .1 } }
+      .hero .wrap { position: relative; padding-block: 64px 68px }
+      .hero .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px; margin: 0 0 18px;
+        font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+        color: #bcd7f2;
+      }
+      .hero .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--sky) }
+      .hero h1 {
+        margin: 0 0 16px; max-width: 16ch; font-weight: 700;
+        font-size: clamp(2.1rem, 1.3rem + 3vw, 3.4rem); line-height: 1.06; letter-spacing: -.035em;
+      }
+      .hero p { margin: 0; max-width: 54ch; color: #d6e4f6; font-size: clamp(1rem, .96rem + .3vw, 1.16rem) }
+      .facts { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 0; padding: 0; list-style: none }
+      .facts li {
+        font-size: .84rem; padding: 6px 13px; border-radius: 999px;
+        background: rgb(255 255 255 / .1); border: 1px solid rgb(255 255 255 / .16);
+      }
+
+      main { padding: 0 0 80px }
+
+      /* --- footer ------------------------------------------------------------------- */
+      footer { border-top: 1px solid var(--line); background: var(--card) }
+      footer .wrap { padding-block: 44px 40px }
+      .foot-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px }
+      @media (max-width: 760px) { .foot-grid { grid-template-columns: 1fr 1fr; gap: 32px } .foot-brand { grid-column: 1 / -1 } }
+      /* A text wordmark, not the wordmark file: its navy disappears on the dark ground. */
+      .lockup { display: inline-flex; align-items: center; gap: 11px; margin-bottom: 15px; text-decoration: none; color: var(--ink) }
+      .lockup img { display: block }
+      .lockup span { font-size: 1.5rem; font-weight: 700; letter-spacing: -.025em }
+      .foot-brand p { margin: 0; color: var(--muted); font-size: .9rem; max-width: 38ch }
+      .foot-col h3 {
+        margin: 0 0 12px; font-size: .74rem; font-weight: 700; letter-spacing: .09em;
+        text-transform: uppercase; color: var(--muted);
+      }
+      .foot-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; font-size: .92rem }
+      .foot-col a { color: var(--ink); text-decoration: none }
+      .foot-col a:hover { color: var(--accent); text-decoration: underline }
+      .foot-base {
+        margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line);
+        display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: .84rem;
+      }
+      .foot-base .sep { margin-left: auto }
     </style>
   </head>
   <body>
-    <header class="wrap">
-      <a class="brand" href="https://trokky.dev" aria-label="Trokky">
-        <img src="/logo.svg" width="24" height="27" alt="" />
-        <span>trokky<b>.build</b></span>
-      </a>
-      <h1>Compose a Trokky project</h1>
-      <p class="lede">
-        Pick where it runs, where content lives, and how much of the stack you want. You get a
-        project that is ready to run — not a checklist.
-      </p>
+    <div class="topbar">
+      <div class="wrap">
+        <a class="brand" href="/" aria-label="trokky.build">
+          <img src="/logo.svg" width="26" height="29" alt="" />
+          <span>trokky<b>.build</b></span>
+        </a>
+        <nav>
+          <a class="optional" href="https://trokky.dev">Docs</a>
+          <a class="optional" href="https://trokky.dev/run/adapters/">Adapters</a>
+          <a href="https://github.com/Trokky/trokky">GitHub</a>
+        </nav>
+      </div>
+    </div>
+
+    <header class="hero">
+      <img class="mark" src="/logo.svg" alt="" aria-hidden="true" />
+      <div class="wrap">
+        <p class="eyebrow">Trokky project builder</p>
+        <h1>Compose a CMS that fits.</h1>
+        <p>
+          Pick where it runs, where content lives, and how much of the stack you want. You get a
+          project that is ready to run — not a checklist.
+        </p>
+        <ul class="facts">
+          <li>Cloudflare Workers or Node</li>
+          <li>API, Studio and a site</li>
+          <li>Composed in your browser</li>
+        </ul>
+      </div>
     </header>
 
-    <main class="wrap">
-      <Configurator axes={axes} />
+    <main>
+      <Configurator groups={groups} axes={axes} />
     </main>
 
-    <footer class="wrap">
-      Composed by <a href="https://github.com/Trokky/generator">create-trokky</a> in your browser —
-      nothing is uploaded. <a href="https://trokky.dev">Docs</a> ·
-      <a href="https://github.com/Trokky/trokky">Trokky</a> ·
-      <a href="https://github.com/Trokky/build">This page</a>
+    <footer>
+      <div class="wrap">
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <a class="lockup" href="https://trokky.dev">
+              <img src="/logo.svg" width="38" height="43" alt="" />
+              <span>Trokky</span>
+            </a>
+            <p>
+              A composable, TypeScript-native CMS. Storage is a choice; the Studio is a router you
+              mount; the edge is a target, not a rewrite.
+            </p>
+          </div>
+          <div class="foot-col">
+            <h3>Trokky</h3>
+            <ul>
+              <li><a href="https://trokky.dev">Documentation</a></li>
+              <li><a href="https://trokky.dev/run/adapters/">Storage adapters</a></li>
+              <li><a href="https://github.com/Trokky/trokky">Source</a></li>
+            </ul>
+          </div>
+          <div class="foot-col">
+            <h3>This builder</h3>
+            <ul>
+              <li><a href="https://github.com/Trokky/generator">create-trokky</a></li>
+              <li><a href="https://github.com/Trokky/build">Page source</a></li>
+              <li><a href="https://github.com/Trokky/trokky-template">Template repo</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="foot-base">
+          <span>Composed by create-trokky in your browser — nothing is uploaded.</span>
+          <span class="sep">MIT licensed</span>
+        </div>
+      </div>
     </footer>
   </body>
 </html>

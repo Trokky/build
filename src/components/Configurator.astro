@@ -1,38 +1,58 @@
 ---
 interface Option { id: string; title: string; hint?: string }
-interface Axis { id: string; title: string; options: Option[] }
-interface Props { axes: Axis[] }
-const { axes } = Astro.props
+interface Axis { id: string; group?: string; title: string; options: Option[] }
+interface Group { id: string; title: string; hint?: string }
+interface Props { groups: Group[]; axes: Axis[] }
+const { groups, axes } = Astro.props
+
+// Grouping comes from the manifest, so an axis added later lands under a heading rather than
+// nowhere. Anything ungrouped still gets drawn, in its own section, rather than disappearing.
+const sections = [
+  ...groups.map(group => ({ group, axes: axes.filter(axis => axis.group === group.id) })),
+  { group: { id: 'other', title: 'More', hint: undefined }, axes: axes.filter(axis => !groups.some(g => g.id === axis.group)) },
+].filter(section => section.axes.length > 0)
+
+let step = 0
 ---
 
-<div class="layout">
+<div class="wrap layout">
   <form id="configurator" novalidate>
-    <div class="field">
+    <div class="card intro">
       <label for="project-name">Project name</label>
       <input id="project-name" name="name" value="my-trokky-site" spellcheck="false" autocomplete="off" autocapitalize="off" />
       <p class="field-hint">Used for the folder, the package and — on Cloudflare — the Worker.</p>
     </div>
 
-    {axes.map((axis, index) => (
-      <fieldset data-axis={axis.id}>
-        <legend><span class="step">{index + 1}</span>{axis.title}</legend>
-        <div class="options">
-          {axis.options.map(option => (
-            <label class="option" data-option={option.id}>
-              <input type="radio" name={axis.id} value={option.id} />
-              <span class="title">{option.title}</span>
-              {option.hint && <span class="hint">{option.hint}</span>}
-              <span class="because" hidden></span>
-            </label>
-          ))}
+    {sections.map(section => (
+      <section class="group">
+        <div class="group-head">
+          <h2>{section.group.title}</h2>
+          {section.group.hint && <p>{section.group.hint}</p>}
         </div>
-      </fieldset>
+
+        {section.axes.map(axis => (
+          <fieldset data-axis={axis.id}>
+            <legend><span class="step">{++step}</span>{axis.title}</legend>
+            <div class="options">
+              {axis.options.map(option => (
+                <label class="option" data-option={option.id}>
+                  <input type="radio" name={axis.id} value={option.id} />
+                  <span class="tick" aria-hidden="true"></span>
+                  <span class="title">{option.title}</span>
+                  {option.hint && <span class="hint">{option.hint}</span>}
+                  <span class="because" hidden></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </section>
     ))}
   </form>
 
   <aside id="result" aria-live="polite">
-    <div class="panel">
-      <h2>What you will get</h2>
+    <div class="panel card">
+      <h2>Your project</h2>
       <ul id="summary-list"></ul>
 
       <div class="actions">
@@ -59,57 +79,91 @@ const { axes } = Astro.props
 </div>
 
 <style>
-  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 48px; align-items: start }
-  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 32px } }
-
-  form { margin: 0 }
-  .field { margin-bottom: 40px }
-  .field label { display: block; font-weight: 600; margin-bottom: 8px }
-  .field input {
-    width: 100%; max-width: 380px; padding: 11px 13px; font-size: 1rem;
-    border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink);
+  /* The panel lifts into the hero so the page opens on the thing you came to press. */
+  .layout {
+    display: grid; grid-template-columns: minmax(0, 1fr) 358px; gap: 56px;
+    align-items: start; margin-top: -34px;
   }
-  .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
-  .field-hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0 }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; gap: 28px; margin-top: 28px } }
 
-  fieldset { border: 0; padding: 0; margin: 0 0 40px }
-  legend { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 0; margin-bottom: 12px }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow) }
+
+  form { margin: 0; padding-top: 34px }
+  @media (max-width: 980px) { form { padding-top: 0 } }
+
+  .intro { padding: 20px 22px; margin-bottom: 40px }
+  .intro label { display: block; font-weight: 600; margin-bottom: 8px }
+  .intro input {
+    width: 100%; max-width: 400px; padding: 11px 13px; font: inherit;
+    border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--ink);
+  }
+  .intro input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+  .field-hint { color: var(--muted); font-size: .85rem; margin: 9px 0 0 }
+
+  .group { margin-bottom: 44px }
+  .group-head { margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--line) }
+  .group-head h2 {
+    margin: 0; font-size: 1.28rem; letter-spacing: -.02em;
+    background: linear-gradient(94deg, var(--navy), var(--sky));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  @media (prefers-color-scheme: dark) { .group-head h2 { background: none; color: var(--ink) } }
+  .group-head p { margin: 5px 0 0; color: var(--muted); font-size: .93rem }
+
+  fieldset { border: 0; padding: 0; margin: 0 0 26px }
+  fieldset:last-child { margin-bottom: 0 }
+  legend { display: flex; align-items: center; gap: 10px; font-weight: 600; padding: 0; margin-bottom: 11px }
   .step {
-    display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
-    background: var(--accent-soft); color: var(--accent); font-size: .78rem; font-weight: 700;
+    display: grid; place-items: center; width: 23px; height: 23px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-size: .76rem; font-weight: 700;
   }
-  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 11px }
 
   .option {
-    position: relative; display: block; padding: 14px 16px; cursor: pointer;
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-    transition: border-color .12s, background .12s;
+    position: relative; display: block; padding: 15px 17px 15px 42px; cursor: pointer;
+    background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+    transition: border-color .12s, background .12s, box-shadow .12s;
   }
-  .option:hover:not([data-unavailable]) { border-color: var(--accent) }
+  .option:hover:not([data-unavailable]) { border-color: var(--accent); box-shadow: var(--shadow) }
   .option input { position: absolute; opacity: 0; pointer-events: none }
+  .option .tick {
+    position: absolute; left: 15px; top: 17px; width: 17px; height: 17px; border-radius: 50%;
+    border: 1.5px solid var(--line); transition: border-color .12s, background .12s;
+  }
   .option .title { display: block; font-weight: 600 }
   .option .hint { display: block; color: var(--muted); font-size: .86rem; margin-top: 3px }
+
   .option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft) }
+  .option:has(input:checked) .tick { border-color: var(--accent); background: var(--accent) }
+  .option:has(input:checked) .tick::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 5px; height: 9px;
+    border: solid #fff; border-width: 0 2px 2px 0; rotate: 45deg; translate: 0 -1px;
+  }
   .option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px }
 
   /* Unavailable is not hidden: seeing why a thing cannot be chosen is most of the value here. */
-  .option[data-unavailable] { background: var(--off); cursor: not-allowed; border-style: dashed }
-  .option[data-unavailable] .title, .option[data-unavailable] .hint { opacity: .5 }
+  .option[data-unavailable] { background: var(--off); cursor: not-allowed; border-style: dashed; box-shadow: none }
+  .option[data-unavailable] .title, .option[data-unavailable] .hint, .option[data-unavailable] .tick { opacity: .45 }
   .option .because {
-    display: block; margin-top: 8px; font-size: .84rem; line-height: 1.45;
-    color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px;
+    display: block; margin-top: 9px; font-size: .84rem; line-height: 1.45;
+    color: var(--muted); border-top: 1px dashed var(--line); padding-top: 9px;
   }
 
   /* The actions follow you down the page: the choices are long and the button is the point. */
-  aside { position: sticky; top: 24px }
-  @media (max-width: 900px) { aside { position: static } }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px }
-  .panel h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px }
-  #summary-list { margin: 0 0 18px; padding: 0; list-style: none; font-size: .92rem }
-  #summary-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--line) }
-  #summary-list li:last-child { border-bottom: 0 }
-  #summary-list span { color: var(--muted); white-space: nowrap }
-  #summary-list b { font-weight: 600; text-align: right }
+  aside { position: sticky; top: 22px }
+  @media (max-width: 980px) { aside { position: static } }
+  .panel { padding: 22px }
+  .panel h2 { font-size: .74rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin: 0 0 14px }
+  /* The rows are written by the script, so they carry no scope attribute and a scoped rule
+     never reaches them. This is why the summary read as one run-on line per row. */
+  #summary-list { margin: 0 0 20px; padding: 0; list-style: none; font-size: .92rem }
+  :global(#summary-list li) {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+    padding: 7px 0; border-bottom: 1px solid var(--line);
+  }
+  :global(#summary-list li:last-child) { border-bottom: 0 }
+  :global(#summary-list span) { color: var(--muted); white-space: nowrap }
+  :global(#summary-list b) { font-weight: 600; text-align: right }
 
   .deploy {
     display: block; text-decoration: none; text-align: center; margin-bottom: 10px;
@@ -117,13 +171,14 @@ const { axes } = Astro.props
   }
   .deploy small { display: block; font-weight: 400; font-size: .76rem; opacity: .92; margin-top: 3px }
   #download {
-    font: inherit; font-weight: 600; padding: 12px 18px; border: 0; border-radius: 10px;
-    background: var(--accent); color: #fff; cursor: pointer; width: 100%;
+    font: inherit; font-weight: 600; font-size: 1rem; padding: 14px 18px; border: 0; border-radius: 10px;
+    background: linear-gradient(100deg, var(--navy), var(--sky)); color: #fff; cursor: pointer; width: 100%;
   }
-  #download:disabled { opacity: .55; cursor: progress }
+  #download:hover { filter: brightness(1.08) }
+  #download:disabled { opacity: .55; cursor: progress; filter: none }
   .note { color: var(--muted); font-size: .82rem; line-height: 1.5; margin: 12px 0 0 }
 
-  .cli { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px }
+  .cli { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 15px }
   .cli-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px }
   .cli-head span { color: var(--muted); font-size: .8rem }
   #copy {
@@ -133,7 +188,7 @@ const { axes } = Astro.props
   #copy:hover { color: var(--ink); border-color: var(--accent) }
   #cli-command {
     display: block; font-size: .76rem; line-height: 1.55; color: var(--ink);
-    word-break: break-all; background: var(--off); border-radius: 8px; padding: 10px;
+    word-break: break-all; background: var(--off); border-radius: 8px; padding: 11px;
   }
 </style>
 
@@ -202,15 +257,23 @@ const { axes } = Astro.props
     describe()
   }
 
+  /** What an option is called, in the manifest's words rather than its id. */
+  function titleOf(axisId: string, value: string | undefined): string {
+    const option = manifest.axes.find(a => a.id === axisId)?.options.find(o => o.id === value)
+    return option?.title ?? value ?? ''
+  }
+
   function describe(): void {
     const config = reconcile(chosen()) as Record<string, string>
+    // The labels are the summary's own; the values are the manifest's, so the panel says
+    // "Cloudflare D1" where the page used to print the adapter id at the reader.
     const lines: [string, string][] = [
-      ['Runs on', config.target === 'workers' ? 'Cloudflare Workers' : 'Node / Express'],
-      ['Content in', config.data ?? ''],
-      ['Uploads in', config.media ?? ''],
-      ['Thumbnails', config.images === 'none' ? 'not generated — originals only' : config.images ?? ''],
-      ['You get', config.parts === 'api' ? 'the API' : config.parts === 'studio' ? 'the API and the Studio' : 'the API, the Studio and a site'],
-      ['Starting content', config.content === 'magazine' ? 'a sample magazine' : 'nothing — your schemas'],
+      ['Runs on', titleOf('target', config.target)],
+      ['Content in', titleOf('data', config.data)],
+      ['Uploads in', titleOf('media', config.media)],
+      ['Thumbnails', titleOf('images', config.images)],
+      ['You get', titleOf('parts', config.parts)],
+      ['Starting content', titleOf('content', config.content)],
     ]
     summary.innerHTML = lines.map(([label, value]) => `<li><span>${label}</span><b>${value}</b></li>`).join('')
 
