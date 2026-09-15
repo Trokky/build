@@ -34,7 +34,16 @@ const { axes } = Astro.props
     <ul id="summary-list"></ul>
   </div>
   <div class="actions">
+    <a id="deploy" class="deploy" hidden href="#" rel="noopener">
+      <span>Deploy to Cloudflare</span>
+      <small>One click. Cloudflare provisions D1, R2 and Images on your account.</small>
+    </a>
     <button id="download" type="button">Download project</button>
+    <p id="deploy-note" class="note" hidden>
+      One-click deployment needs a public repository, and this composition is not one — it is
+      assembled here, for you. Download it and deploy in three commands:
+      <code>npm install</code>, <code>npx wrangler login</code>, <code>npx wrangler deploy</code>.
+    </p>
     <p class="cli">Or in a terminal:<br /><code id="cli-command"></code></p>
   </div>
 </section>
@@ -83,6 +92,16 @@ const { axes } = Astro.props
   #summary-list li { padding: 3px 0 }
   #summary-list b { color: var(--ink); font-weight: 600 }
 
+  .deploy {
+    display: block; text-decoration: none; text-align: center; margin-bottom: 10px;
+    padding: 12px 22px; border-radius: 10px; background: #f6821f; color: #fff; font-weight: 600;
+  }
+  .deploy small { display: block; font-weight: 400; font-size: .78rem; opacity: .92; margin-top: 3px }
+  .note {
+    color: var(--muted); font-size: .84rem; line-height: 1.5; margin: 12px 0 0; max-width: 42ch;
+  }
+  .note code { color: var(--ink); font-size: .8rem; white-space: nowrap }
+
   #download {
     font: inherit; font-weight: 600; padding: 12px 22px; border: 0; border-radius: 10px;
     background: var(--accent); color: #fff; cursor: pointer; width: 100%;
@@ -93,13 +112,15 @@ const { axes } = Astro.props
 </style>
 
 <script>
-  import { validate, optionsFor, withDefaults, generate, inlineFileSource, manifest } from 'create-trokky'
+  import { validate, optionsFor, templateFor, withDefaults, generate, inlineFileSource, manifest } from 'create-trokky'
 
   const form = document.getElementById('configurator') as HTMLFormElement
   const nameInput = document.getElementById('project-name') as HTMLInputElement
   const summary = document.getElementById('summary-list') as HTMLUListElement
   const command = document.getElementById('cli-command') as HTMLElement
   const download = document.getElementById('download') as HTMLButtonElement
+  const deploy = document.getElementById('deploy') as HTMLAnchorElement
+  const deployNote = document.getElementById('deploy-note') as HTMLElement
 
   const axisIds = manifest.axes.map(axis => axis.id)
 
@@ -169,6 +190,14 @@ const { axes } = Astro.props
     const name = nameInput.value.trim() || 'my-trokky-site'
     const flags = axisIds.map(id => `--${id}=${config[id]}`).join(' ')
     command.textContent = `npm create trokky@latest ${name} -- --yes ${flags}`
+
+    // The Deploy button needs a public repository. Exactly one composition is one; for the rest,
+    // say so and give the three commands that do the same job, rather than hiding the option
+    // with no explanation.
+    const template = templateFor(config)
+    deploy.hidden = !template
+    deployNote.hidden = Boolean(template)
+    if (template) deploy.href = template.deployButton
   }
 
   form.addEventListener('change', refresh)
