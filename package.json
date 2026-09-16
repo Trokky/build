@@ -17,7 +17,7 @@
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
     "astro": "^7.3.2",
-    "create-trokky": "github:Trokky/generator#ae979e652993bbe17404c408e27d8e657daf4144",
+    "create-trokky": "^0.1.1",
     "fflate": "^0.8.2"
   },
   "devDependencies": {
