@@ -148,6 +148,22 @@ let step = 0
     display: block; margin-top: 9px; font-size: .84rem; line-height: 1.45;
     color: var(--muted); border-top: 1px dashed var(--line); padding-top: 9px;
   }
+  :global(.option .blocked-by) {
+    margin: 7px 0 0; font-size: .82rem; line-height: 1.5; color: var(--muted);
+  }
+  :global(.option .blocked-by strong) { color: var(--ink); font-weight: 600; }
+  :global(.option .unblock) {
+    font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    background: var(--card); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 6px; padding: 3px 9px;
+    margin-top: 5px;
+  }
+  :global(.option .unblock:hover) { background: var(--accent-soft); }
+  :global(.option .unblock:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The card is not-allowed, but its escape hatch has to be clickable. */
+  .option[data-unavailable] { pointer-events: none; }
+  :global(.option[data-unavailable] .blocked-by),
+  :global(.option[data-unavailable] .unblock) { pointer-events: auto; }
 
   /* The actions follow you down the page: the choices are long and the button is the point. */
   aside { position: sticky; top: 22px }
@@ -241,16 +257,67 @@ let step = 0
         if (available.has(option.id)) {
           label.removeAttribute('data-unavailable')
           input.disabled = false
+          because.replaceChildren()
           because.hidden = true
           continue
         }
 
         label.setAttribute('data-unavailable', '')
         input.disabled = true
-        // Why not — in the constraint's own words, not a generic "unavailable".
+        // Why not — in the constraint's own words, not a generic "unavailable" — and, where the
+        // constraint names a condition, WHICH other choice is holding it and a way to change it.
+        // Saying only "a site needs something to render" left people reading the default
+        // composition as "Blank is disabled", because nothing connected it to the step above.
         const problem = validate({ ...config, [axis.id]: option.id }).problems.find(p => p.axis === axis.id)
-        because.textContent = problem?.because ?? ''
+        because.replaceChildren()
         because.hidden = !problem
+
+        if (problem) {
+          because.append(problem.because)
+
+          const release = unblocker(problem, config, axis.id, option.id)
+          if (release) {
+            const line = document.createElement('p')
+            line.className = 'blocked-by'
+            line.append('Held by ')
+
+            const strong = document.createElement('strong')
+            strong.textContent = `${release.axisTitle} — ${release.currentTitle}`
+            line.append(strong, '. ')
+
+            const button = document.createElement('button')
+            button.type = 'button'
+            button.className = 'unblock'
+            button.textContent = release.churn > 0
+              ? `Switch to ${release.toTitle} (and ${release.churn} other ${release.churn === 1 ? 'choice' : 'choices'})`
+              : `Switch to ${release.toTitle}`
+            button.addEventListener('click', event => {
+              event.preventDefault()
+              const next = form.querySelector(`[data-axis="${release.axisId}"] [data-option="${release.to}"] input`)
+              if (next) {
+                // Enabled first, for the same reason as below: no offer names a disabled option
+                // today, but if one ever did, FormData would drop the blocking axis and the
+                // press would deliver that axis's default instead.
+                next.disabled = false
+                next.checked = true
+              }
+
+              const wanted = form.querySelector(`[data-axis="${axis.id}"] [data-option="${option.id}"] input`)
+              if (wanted) {
+                // Enable BEFORE checking: `chosen()` reads the form through FormData, which skips
+                // disabled controls. Checking a still-disabled radio dropped the axis entirely,
+                // so reconcile() refilled the target's default and the press delivered the
+                // opposite of what the button offered.
+                wanted.disabled = false
+                wanted.checked = true
+              }
+
+              refresh()
+            })
+            line.append(button)
+            because.append(line)
+          }
+        }
       }
     }
 
@@ -261,6 +328,80 @@ let step = 0
   function titleOf(axisId: string, value: string | undefined): string {
     const option = manifest.axes.find(a => a.id === axisId)?.options.find(o => o.id === value)
     return option?.title ?? value ?? ''
+  }
+
+  /**
+   * The other choice that is refusing this one, and a value that would release it.
+   *
+   * Read out of the manifest, never hardcoded: the constraint says which axis it is conditioned
+   * on, and the release value is whichever option actually makes the pair validate. A rule added
+   * to the manifest tomorrow explains itself here with no change to this file.
+   */
+  function unblocker(
+    problem: { constraint?: string },
+    config: Record<string, string>,
+    axisId: string,
+    wanted: string
+  ): { axisId: string; axisTitle: string; currentTitle: string; to: string; toTitle: string; churn: number } | null {
+    const constraint = manifest.constraints.find(c => c.id === problem.constraint)
+    if (!constraint) return null
+
+    // First condition axis that yields an offer wins. Every constraint in the manifest is
+    // conditioned on one axis today; a multi-key `when` would need the ranking below to compare
+    // across holders, not just within one.
+    for (const [conditionAxis, conditionValue] of Object.entries(constraint.when ?? {})) {
+      // Only worth offering when that axis is the one currently satisfying the condition.
+      if (config[conditionAxis] !== conditionValue) continue
+
+      const candidates = manifest.axes.find(a => a.id === conditionAxis)?.options ?? []
+      const offers: { id: string; title: string; churn: number; step: number }[] = []
+
+      for (const candidate of candidates) {
+        if (candidate.id === conditionValue) continue
+
+        // Reconciled, not raw. Moving one axis on its own leaves the other target's adapters in
+        // place, so a whole-config validate always failed and every option conditioned on
+        // `target` was discarded — which was most of them. The page reconciles on change too,
+        // so this asks the same question the click will actually answer.
+        const settled = reconcile({ ...config, [conditionAxis]: candidate.id, [axisId]: wanted }) as Record<string, string>
+        if (settled[axisId] !== wanted) continue
+        if (!validate(settled as never).valid) continue
+
+        // Prefer the switch that disturbs least. Declaration order handed back the most
+        // destructive option — offering "API only" for a blocked Blank threw away the Studio,
+        // contradicting the constraint's own "or drop the frontend" two lines above.
+        const churn = Object.keys(settled).filter(
+          key => key !== conditionAxis && key !== axisId && settled[key] !== config[key]
+        ).length
+
+        // Distance in declaration order, as a tie-break. The axes are declared narrowest-first
+        // (api, studio, full-site), so the nearest option is the smallest step away from what the
+        // user already chose. Churn alone does not separate them here: dropping to `api` and
+        // dropping to `studio` both disturb zero OTHER axes, so declaration order would have
+        // handed back `api` and thrown away the Studio nobody asked to lose.
+        const step = Math.abs(
+          candidates.findIndex(o => o.id === candidate.id) - candidates.findIndex(o => o.id === conditionValue)
+        )
+
+        offers.push({ id: candidate.id, title: candidate.title, churn, step })
+      }
+
+      offers.sort((a, b) => a.churn - b.churn || a.step - b.step)
+      const best = offers[0]
+
+      if (best) {
+        return {
+          axisId: conditionAxis,
+          axisTitle: manifest.axes.find(a => a.id === conditionAxis)?.title ?? conditionAxis,
+          currentTitle: titleOf(conditionAxis, conditionValue),
+          to: best.id,
+          toTitle: best.title,
+          churn: best.churn,
+        }
+      }
+    }
+
+    return null
   }
 
   function describe(): void {
